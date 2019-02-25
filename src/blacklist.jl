@@ -1,4 +1,4 @@
-const blacklist_file = joinpath(@__DIR__,"../blacklist") |> abspath
+const blacklist_file = abspath(@__DIR__,"../blacklist") 
 
 function read_blacklist()
     list = Set{String}()
