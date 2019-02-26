@@ -3,7 +3,8 @@ Make Julia fast again
 
 ### Installation
 ```julia
-Pkg.add("https://github.com/TsurHerman/Fezzik")
+using Pkg
+pkg"add https://github.com/TsurHerman/Fezzik"
 ```
 
 ### Usage
