@@ -66,7 +66,7 @@ macro reveal_loaded_packages()
     return nothing
 end
 
-function bootstrap(;clear_traces = true)
+function brute_build_julia(;clear_traces = true)
     !isdir(trace_dir) && begin
         @info "no trace files found"
         return
@@ -166,9 +166,10 @@ function bootstrap(;clear_traces = true)
     println("\n\n\n Compiling...")
     PackageCompiler.compile_incremental(nothing,out_file;force = true , verbose = false)
     @info "DONE!!"
+    exit()
     nothing
 end
-export bootstrap
+export brute_build_julia
 
 using Libdl
 sysimage_size() = stat(joinpath(PackageCompiler.default_sysimg_path(),"sys.$(Libdl.dlext)")).size/(1024*1024)
