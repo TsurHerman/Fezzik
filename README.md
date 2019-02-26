@@ -51,7 +51,8 @@ abspath(dirname(pathof(Fezzik)),"../","traces") |> edit
 to enable PyPlot showing properly after it was baked into the sytem image
 add
 ```julia
-PyPlot.ion() ```
+PyPlot.ion()
+```
 to your startup.jl
 
 ### Revert
