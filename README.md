@@ -44,7 +44,8 @@ remove itself from the startup.jl and deletes previous traces
 
 trace logs can be found by running the following command
 ```julia
-abspath(dirname(pathof(Fezzik)),"../","traces") |> edit```
+abspath(dirname(pathof(Fezzik)),"../","traces") |> edit
+```
 
 ### PyPlot
 to enable PyPlot showing properly after it was baked into the sytem image
