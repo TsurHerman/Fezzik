@@ -15,6 +15,7 @@ Fezzik.auto_trace()
 ```
 enables automatic tracing of compiler activity through adding itself
 to the startup.jl file.
+After this phase you'll need to re-launch julia , work a little bit to let Fezzik trace your routine and then:
 
 ```julia
 Fezzik.brute_build_julia()
