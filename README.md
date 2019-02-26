@@ -52,3 +52,11 @@ add
 ```julia
 PyPlot.ion() ```
 to your startup.jl
+
+### Revert
+
+every now and then you'll want to start over , just call
+```julia
+Fezzik.revert()
+```
+to go back to the beginning
