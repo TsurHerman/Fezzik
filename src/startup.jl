@@ -11,8 +11,8 @@ function StartupTracer()
         using Fezzik
         try
             Fezzik.trace()
-        catch e
-            @info "Something went wrong" "Fezzik is corrupt"
+        catch err
+            @info "Something went wrong" err
         end
     catch e
         try
@@ -21,11 +21,11 @@ function StartupTracer()
             import Fezzik
             try
                 Fezzik.trace()
-            catch e
-                @info "Something went wrong" "Fezzik is corrupt"
+            catch err
+                @info "Something went wrong" err
             end
-        catch e
-            @info "Something went wrong" "could not find Fezzik"
+        catch err
+            @info "Something went wrong" err
         end
     end
 
@@ -61,4 +61,6 @@ function auto_trace(::Val{false})
             println(io,line)
         end
     end
+    rm(trace_dir;force=true , recursive = true)
+    nothing
 end
