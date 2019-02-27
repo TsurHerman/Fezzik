@@ -7,13 +7,13 @@ const trace_file = Vector{UInt8}()
 function trace()
     global trace_dir,trace_file
     !isdir(trace_dir) && mkdir(trace_dir)
-   
+
     empty!(trace_file)
     for c in joinpath(trace_dir,"trace_$(rand(UInt32)).jl")
         push!(trace_file,UInt8(c))
     end
     push!(trace_file,C_NULL)
-    
+
     opts = Base.JLOptions()
     opts = @set opts.trace_compile = pointer(trace_file)
     unsafe_store!(Base.cglobal(:jl_options,Base.JLOptions),opts)
@@ -97,7 +97,7 @@ function brute_build_julia(;clear_traces = true)
             end
         end
     end
-    
+
     clear_traces && isdir(trace_dir) && for f in readdir(trace_dir)
         file = joinpath(trace_dir,f)
         try
@@ -105,8 +105,8 @@ function brute_build_julia(;clear_traces = true)
         catch err
             @warn "failed to remove trace file" err file
         end
-    end 
-    
+    end
+
     out_file = abspath(@__DIR__,"../","precomp.jl")
     @info "generating precompile"
     my_env = Base.ACTIVE_PROJECT.x
@@ -179,8 +179,18 @@ function brute_build_julia(;clear_traces = true)
     untrace()
 
     println("\n\n\n Compiling...")
-    PackageCompiler.compile_incremental(nothing,out_file;force = true , verbose = false)
+    (new_syso, old_syso) = PackageCompiler.compile_incremental(nothing,out_file;force = false , verbose = false)
     @info "DONE!!"
+    try
+        cp(new_syso, old_syso, force = true)
+    catch err
+        @warn "Failed to replace sysimg" err
+        println()
+        println("exit all julia sessions and manually run the following command: ")
+        copy_com = Sys.iswindows() ? "copy" : "cp"
+        println("$copy_com $new_syso $old_syso")
+        println()
+    end
     exit()
     nothing
 end
