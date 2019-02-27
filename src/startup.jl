@@ -1,7 +1,9 @@
 
 function julia_startup_file()
     res = abspath(homedir(), ".julia", "config", "startup.jl")
-    !isfile(res) && touch(res)
+    !isfile(res) && open(res,"w") do io
+        println(io,"")
+    end
     res
 end
 
