@@ -91,7 +91,15 @@ function brute_build_julia(;clear_traces = true)
             end
         end
     end
-    clear_traces && rm(trace_dir;force=true , recursive = true)
+    
+    clear_traces && isdir(trace_dir) && for f in readdir(trace_dir)
+        try
+            rm(joinpath(trace_dir,f);force = true)
+        catch err
+            @warn "failed to remove trace file" err
+        end
+    end 
+    
     out_file = abspath(@__DIR__,"../","precomp.jl")
     @info "generating precompile"
     my_env = Base.ACTIVE_PROJECT.x
