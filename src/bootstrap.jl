@@ -2,14 +2,20 @@ using PackageCompiler
 using Setfield
 
 const trace_dir = abspath(@__DIR__,"../traces/")
-cstr = nothing
+const trace_file = Vector{UInt8}()
+
 function trace()
-    global trace_dir,cstr
+    global trace_dir,trace_file
     !isdir(trace_dir) && mkdir(trace_dir)
-    trace_file = joinpath(trace_dir,"trace_$(rand(UInt32)).jl")
+   
+    empty!(trace_file)
+    for c in joinpath(trace_dir,"trace_$(rand(UInt32)).jl")
+        push!(trace_file,UInt8(c))
+    end
+    push!(trace_file,C_NULL)
+    
     opts = Base.JLOptions()
-    cstr =  Base.unsafe_convert(Cstring,trace_file)
-    opts = @set opts.trace_compile = convert(Ptr{UInt8},cstr)
+    opts = @set opts.trace_compile = pointer(trace_file)
     unsafe_store!(Base.cglobal(:jl_options,Base.JLOptions),opts)
     return nothing
 end
