@@ -93,10 +93,11 @@ function brute_build_julia(;clear_traces = true)
     end
     
     clear_traces && isdir(trace_dir) && for f in readdir(trace_dir)
+        file = joinpath(trace_dir,f)
         try
-            rm(joinpath(trace_dir,f);force = true)
+            rm(file;force = true)
         catch err
-            @warn "failed to remove trace file" err
+            @warn "failed to remove trace file" err file
         end
     end 
     
