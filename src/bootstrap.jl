@@ -64,12 +64,13 @@ try_parse_line(line,linenum,filename) = begin
 end
 
 macro reveal_loaded_packages()
-    for Mod in Base.loaded_modules_array()
-        if !Core.isdefined(@__MODULE__, nameof(Mod))
-            Core.eval(@__MODULE__, Expr(:const, Expr(:(=), nameof(Mod), Mod)))
+    return quote
+        for Mod in Base.loaded_modules_array()
+            if !Core.isdefined(@__MODULE__, nameof(Mod))
+                Core.eval(@__MODULE__, Expr(:const, Expr(:(=), nameof(Mod), Mod)))
+            end
         end
     end
-    return nothing
 end
 
 function brute_build_julia(;clear_traces = true)
