@@ -1,6 +1,8 @@
 
 function julia_startup_file()
-    abspath(homedir(), ".julia", "config", "startup.jl")
+    res = abspath(homedir(), ".julia", "config", "startup.jl")
+    !isfile(res) && touch(res)
+    res
 end
 
 function StartupTracer()
