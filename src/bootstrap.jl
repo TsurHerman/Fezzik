@@ -1,5 +1,6 @@
 using PackageCompiler
 using Setfield
+using Pkg
 
 const trace_dir = abspath(@__DIR__,"../traces/")
 const trace_file = Vector{UInt8}()
