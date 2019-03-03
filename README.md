@@ -9,6 +9,8 @@ pkg"add https://github.com/TsurHerman/Fezzik"
 
 ### Usage
 
+one time setup
+
 ```julia
 using Fezzik
 Fezzik.auto_trace()
