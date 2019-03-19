@@ -1,5 +1,4 @@
 ### Fezzik
-Make Julia fast again
 
 ### Installation
 ```julia
