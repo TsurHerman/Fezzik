@@ -1,6 +1,8 @@
 
 function julia_startup_file()
-    res = abspath(homedir(), ".julia", "config", "startup.jl")
+    config_dir = abspath(homedir(), ".julia", "config")
+    !isdir(config_dir) && mkpath(config_dir)
+    res = abspath(config_dir,"startup.jl")
     !isfile(res) && open(res,"w") do io
         println(io,"")
     end
