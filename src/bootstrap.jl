@@ -46,10 +46,13 @@ function grep_possible_packages(expr::Expr,package_set::Set{Symbol})
 end
 
 try_parse_line(line,linenum,filename) = begin
-    line = replace(line, r"typeof\(([\u00A0-\uFFFF\w_!´\.]*@?[\u00A0-\uFFFF\w_!´]+)\)\(\)" => s"\1")
+    line = replace(line,"(\"" => "(raw\"")
+    line = replace(line,"DatePart{Char(" => "DatePart{(")
+    line = replace(line,r"(?<!#)#s(?=\d)" => "T")
+    # line = replace(line, r"typeof\(([\u00A0-\uFFFF\w_!´\.]*@?[\u00A0-\uFFFF\w_!´]+)\)\(\)" => s"\1")
     # Is this ridicilous? Yes, it is! But we need a unique symbol to replace `_`,
     # which otherwise ends up as an uncatchable syntax error
-    line = replace(line, r"\b_\b" => "🐃")
+    # line = replace(line, r"\b_\b" => "🐃")
     try
         expr = Meta.parse(line, raise = true)
         if expr.head != :incomplete
@@ -74,7 +77,7 @@ macro reveal_loaded_packages()
     end
 end
 
-function brute_build_julia(;clear_traces = true)
+function brute_build_julia(;clear_traces = true , debug = false)
     !isdir(trace_dir) && begin
         @info "no trace files found"
         return
@@ -172,8 +175,38 @@ function brute_build_julia(;clear_traces = true)
 
         """)
         for line in statements
-            println(io, "LINE = @__LINE__;try;", line, "; catch e; @info repr(e) LINE end")
+            (st,parsed,success) = try_parse_line(line,0,"----");
+            !success && continue
+            f = "Fezzik"
+            args = "()"
+            try
+                f = """ $(parsed.args[2].args[2].args[2]) """
+                if length(parsed.args[2].args) > 2
+                    args = "("*prod(x->""" $x,""",parsed.args[2].args[3:end])[1:end-1]*")"
+                end
+            catch e
+                @warn e
+                continue
+            end
+
+            reporter = debug ? """ println("\$(@__FILE__):\$LINE") """ : """ print("compiling line \$LINE\\r") """
+
+            println(io, """
+            LINE = @__LINE__;try
+                $reporter;
+                $line;
+            catch e; println(); @info repr(e) LINE end
+            """)
         end
+
+        println(io, """
+            println();
+            println("done.")
+            println(".")
+            println(".")
+            println("Creating sysimg")
+        """)
+
     end
     @info "used $(length(statements)) precompile statements"
     @show out_file
