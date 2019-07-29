@@ -1,11 +1,5 @@
 # This file is machine-generated - editing it directly is not advised
 
-[[ArgParse]]
-deps = ["Compat", "Test", "TextWrap"]
-git-tree-sha1 = "37159c768f28ae52ef9af1e70669d25a68ba7d61"
-uuid = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
-version = "0.6.1"
-
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
@@ -16,10 +10,10 @@ uuid = "9e28174c-4ba2-5203-b857-d8d62c4213ee"
 version = "0.8.10"
 
 [[BinaryProvider]]
-deps = ["Libdl", "Pkg", "SHA", "Test"]
-git-tree-sha1 = "055eb2690182ebc31087859c3dd8598371d3ef9e"
+deps = ["Libdl", "Logging", "SHA"]
+git-tree-sha1 = "c7361ce8a2129f20b0e05a89f7070820cfed6648"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
-version = "0.5.3"
+version = "0.5.6"
 
 [[BufferedStreams]]
 deps = ["Compat", "Test"]
@@ -27,11 +21,23 @@ git-tree-sha1 = "5d55b9486590fdda5905c275bb21ce1f0754020f"
 uuid = "e1450e63-4bb3-523b-b2a4-4ffa8c0fd77d"
 version = "1.0.0"
 
+[[CSTParser]]
+deps = ["Tokenize"]
+git-tree-sha1 = "0ff80f68f55fcde2ed98d7b24d7abaf20727f3f8"
+uuid = "00ebfdb7-1f24-5e51-bd34-a7502290713f"
+version = "0.6.1"
+
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "49269e311ffe11ac5b334681d212329002a9832a"
+git-tree-sha1 = "84aa74986c5b9b898b0d1acaf3258741ee64754f"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "1.5.1"
+version = "2.1.0"
+
+[[DataStructures]]
+deps = ["InteractiveUtils", "OrderedCollections"]
+git-tree-sha1 = "0809951a1774dc724da22d26e4289bbaab77809a"
+uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
+version = "0.17.0"
 
 [[Dates]]
 deps = ["Printf"]
@@ -56,10 +62,10 @@ deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[LibCURL]]
-deps = ["BinaryProvider", "Compat", "Libdl", "Printf"]
-git-tree-sha1 = "6339c87cb76923a3cf947fcd213cbc364355c9c9"
+deps = ["BinaryProvider", "Libdl"]
+git-tree-sha1 = "fd5fc15f2a04608fe1435a769dbbfc7959ff1daa"
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
-version = "0.4.1"
+version = "0.5.2"
 
 [[LibExpat]]
 deps = ["Compat"]
@@ -87,10 +93,10 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MacroTools]]
-deps = ["Compat"]
-git-tree-sha1 = "3fd1a3022952128935b449c33552eb65895380c1"
+deps = ["CSTParser", "Compat", "DataStructures", "Test", "Tokenize"]
+git-tree-sha1 = "d6e9dedb8c92c3465575442da456aec15a89ff76"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-version = "0.4.5"
+version = "0.5.1"
 
 [[Markdown]]
 deps = ["Base64"]
@@ -99,11 +105,17 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
+[[OrderedCollections]]
+deps = ["Random", "Serialization", "Test"]
+git-tree-sha1 = "c4c13474d23c60d20a67b217f1d7f22a40edf8f1"
+uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
+version = "1.1.0"
+
 [[PackageCompiler]]
-deps = ["ArgParse", "Libdl", "Pkg", "REPL", "Serialization", "Test", "UUIDs", "WinRPM"]
-git-tree-sha1 = "3db96de5bc51934d50872b1122f3ebe258a5b4f2"
+deps = ["Libdl", "Pkg", "REPL", "Serialization", "UUIDs", "WinRPM"]
+git-tree-sha1 = "0b5dccd6520dd7072d1d2a7fb22501a98f42e691"
 uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
-version = "0.6.3"
+version = "0.6.4"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -129,9 +141,9 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[Setfield]]
 deps = ["InteractiveUtils", "MacroTools", "Test"]
-git-tree-sha1 = "2f1970d6edf01d267383a4bdadb6ef0efe4da34a"
+git-tree-sha1 = "bef11bb6030131bafbcaaf8a3df16b7a72be8b9c"
 uuid = "efcf1570-3423-57d1-acb7-fd33fddbac46"
-version = "0.3.3"
+version = "0.3.4"
 
 [[SharedArrays]]
 deps = ["Distributed", "Mmap", "Random", "Serialization"]
@@ -152,11 +164,10 @@ uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 deps = ["Distributed", "InteractiveUtils", "Logging", "Random"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[[TextWrap]]
-deps = ["Compat", "Test"]
-git-tree-sha1 = "8355cc559e85469cd4dbe927c375f61d3750e002"
-uuid = "b718987f-49a8-5099-9789-dcd902bef87d"
-version = "0.3.0"
+[[Tokenize]]
+git-tree-sha1 = "c8a8b00ae44a94950814ff77850470711a360225"
+uuid = "0796e94c-ce3b-5d07-9a54-7f471281c624"
+version = "0.5.5"
 
 [[URIParser]]
 deps = ["Test", "Unicode"]
