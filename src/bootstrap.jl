@@ -17,6 +17,7 @@ function trace()
 
     opts = Base.JLOptions()
     opts = @set opts.trace_compile = pointer(trace_file)
+    opts = @set opts.compile_enabled = 2
     unsafe_store!(Base.cglobal(:jl_options,Base.JLOptions),opts)
     return nothing
 end
@@ -25,6 +26,7 @@ function untrace()
     global trace_dir,cstr
     opts = Base.JLOptions()
     opts = @set opts.trace_compile = C_NULL
+    opts = @set opts.compile_enabled = 1
     unsafe_store!(Base.cglobal(:jl_options,Base.JLOptions),opts)
     return nothing
 end
