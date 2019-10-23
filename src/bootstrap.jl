@@ -31,7 +31,7 @@ function untrace()
     return nothing
 end
 
-function grep_possible_packages(expr::Expr,package_set::Set{Symbol})
+function grep_possible_packages!(package_set::Set{Symbol},expr::Expr)
     (length(expr.args) == 0) && return
     s = expr.args[1]
     if expr.head == :.
@@ -41,32 +41,31 @@ function grep_possible_packages(expr::Expr,package_set::Set{Symbol})
     end
     foreach(expr.args) do a
         if typeof(a) == Expr
-            grep_possible_packages(a,package_set)
+            grep_possible_packages!(package_set,a)
         end
     end
     nothing
 end
 
-try_parse_line(line,linenum,filename) = begin
+semantic_fix(line) = begin
     line = replace(line,"(\"" => "(raw\"")
     line = replace(line,"DatePart{Char(" => "DatePart{(")
     line = replace(line,r"(?<!#)#s(?=\d)" => "T")
     line = replace(line,")()" => ")")
-    if occursin(")()",line)
-        @warn return (line,:(),false)
-    end
+end
 
+try_parse_line(line,linenum = 0,filename ="") = begin
     try
         expr = Meta.parse(line, raise = true)
         if expr.head != :incomplete
-            return (line,expr,true)
+            return expr
         else
             @warn "skipping line with parsing error" linenum filename
-            return (line,:(),false)
+            return nothing
         end
     catch e
         @warn "skipping line with parsing error" linenum filename
-        return (line,:(),false)
+        return nothing
     end
 end
 
@@ -85,22 +84,23 @@ function brute_build_julia(;clear_traces = true , debug = false)
         @info "no trace files found"
         return
     end
-    blacklist = push!(Fezzik.blacklist(),"Main")
+    blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#")
     statements = Set{String}()
     packages = Set{Symbol}()
     for fname in readdir(trace_dir)
         counter = 0
         fname = abspath(trace_dir,fname)
-        for st in eachline(fname)
+        for line in eachline(fname)
             try
                 counter += 1
-                any(occursin.(blacklist,st)) && continue
-                (st,parsed,success) = try_parse_line(st,counter,fname);
-                !success && continue
-                grep_possible_packages(parsed,packages)
-                push!(statements,st);
+                any(occursin.(blacklist,[line])) && continue
+                line = semantic_fix(line);
+                expr = try_parse_line(line,counter,fname);
+                isnothing(expr) && continue
+                grep_possible_packages!(packages,expr)
+                push!(statements,line);
             catch e
-                statement = st
+                statement = line
                 @info "Failed to parse statement" statement
             end
         end
@@ -124,6 +124,9 @@ function brute_build_julia(;clear_traces = true , debug = false)
     empty!(Base.LOAD_PATH)
     # Take LOAD_PATH from parent process
     append!(Base.LOAD_PATH, ["@", "@v#.#", "@stdlib"])
+    using Random
+    Base.PCRE.__init__()
+    Random.__init__()
 
     """
 
@@ -186,10 +189,10 @@ function brute_build_julia(;clear_traces = true , debug = false)
             reporter = debug ? """ println("\$(@__FILE__):\$LINE") """ : """ print("compiling line \$LINE\\r") """
 
             println(io, """
-            LINE = @__LINE__;try
+            let LINE = @__LINE__;
+            try $line;
                 $reporter;
-                $line;
-            catch e; println(); @info repr(e) LINE end
+            catch e; println(); @info repr(e) LINE end end
             """)
         end
 
@@ -229,4 +232,12 @@ using Libdl
 sysimage_size() = stat(joinpath(PackageCompiler.default_sysimg_path(),"sys.$(Libdl.dlext)")).size/(1024*1024)
 export sysimage_size
 
-const revert = PackageCompiler.revert
+revert(;force = false) = begin
+    force && rm(PackageCompiler.sysimgbackup_folder(); force = true, recursive = true)
+    PackageCompiler.revert(false)
+end
+
+clean() = begin
+    rm(PackageCompiler.sysimgbackup_folder();force = true,recursive = true);
+    PackageCompiler.force_native_image!();
+end
