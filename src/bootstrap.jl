@@ -69,22 +69,12 @@ try_parse_line(line,linenum = 0,filename ="") = begin
     end
 end
 
-macro reveal_loaded_packages()
-    return quote
-        for Mod in Base.loaded_modules_array()
-            if !Core.isdefined(@__MODULE__, nameof(Mod))
-                Core.eval(@__MODULE__, Expr(:const, Expr(:(=), nameof(Mod), Mod)))
-            end
-        end
-    end
-end
-
 function brute_build_julia(;clear_traces = true , debug = false)
     !isdir(trace_dir) && begin
         @info "no trace files found"
         return
     end
-    blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#")
+    blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#","###compiledcall")
     statements = Set{String}()
     packages = Set{Symbol}()
     for fname in readdir(trace_dir)
@@ -133,36 +123,10 @@ function brute_build_julia(;clear_traces = true , debug = false)
     usings = """
     using Pkg
     Pkg.activate()
-    #Pkg.instantiate()
-    using Fezzik
+    import Fezzik
     packages = $(repr(packages))
+    Fezzik.brute_import_packages!(packages,@__MODULE__)
 
-    failed_packages = Vector{Symbol}()
-    for p in packages
-        Fezzik.@reveal_loaded_packages
-        if isdefined(@__MODULE__,p)
-            if typeof(Core.eval(@__MODULE__,p)) === Module
-                loaded = Core.eval(@__MODULE__,p)
-                println("[\$p] already loaded")
-                continue
-            end
-        end
-        try
-            println("using \$p")
-            Core.eval(@__MODULE__, :(using \$p))
-            Fezzik.@reveal_loaded_packages
-        catch
-            try
-                Pkg.add("\$p")
-                Core.eval(@__MODULE__, :(using \$p))
-                Fezzik.@reveal_loaded_packages
-            catch e
-                @warn e
-                @warn "could not import \$p"
-                push!(failed_packages,p)
-            end
-        end
-    end
     """
     #dry run
     temp_mod = Module()
@@ -172,16 +136,13 @@ function brute_build_julia(;clear_traces = true , debug = false)
     else
         Pkg.activate(my_env)
     end
-    failed_packages = temp_mod.failed_packages
-    @show failed_packages
+
     open(out_file, "w") do io
         println(io, """
         $env
 
-        # bring recursive dependencies of used packages and standard libraries into namespace
+        # recursively bring dependencies of used packages and standard libraries into namespace
         $usings
-
-        Fezzik.@reveal_loaded_packages
 
         """)
         for line in statements
