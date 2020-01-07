@@ -110,18 +110,18 @@ function brute_build_julia(;clear_traces = true , debug = false)
     my_env = Base.ACTIVE_PROJECT.x
 
     env = """
-    using Pkg
+    import Pkg
     empty!(Base.LOAD_PATH)
     # Take LOAD_PATH from parent process
     append!(Base.LOAD_PATH, ["@", "@v#.#", "@stdlib"])
-    using Random
+    import Random
     Base.PCRE.__init__()
     Random.__init__()
 
     """
 
     usings = """
-    using Pkg
+    import Pkg
     Pkg.activate()
     import Fezzik
     packages = $(repr(packages))
@@ -189,7 +189,7 @@ function brute_build_julia(;clear_traces = true , debug = false)
 end
 export brute_build_julia
 
-using Libdl
+import Libdl
 sysimage_size() = stat(joinpath(PackageCompiler.default_sysimg_path(),"sys.$(Libdl.dlext)")).size/(1024*1024)
 export sysimage_size
 

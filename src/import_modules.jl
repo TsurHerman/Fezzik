@@ -6,7 +6,7 @@ function reveal_loaded_packages(mod)
     end
 end
 
-function import_packages!(packages,mod)
+function import_packages!(packages,mod,deffered = Set{Symbol}())
     for p in packages
         Fezzik.reveal_loaded_packages(mod)
         if isdefined(mod,p)
@@ -18,29 +18,33 @@ function import_packages!(packages,mod)
                 println("[$p] is not a Module")
             end
         else
-            println("trying to import $p")
+            !(p in deffered) && println("trying to import $p")
             try
                 Core.eval(mod, :(import $p))
                 Fezzik.reveal_loaded_packages(mod)
                 delete!(packages,p)
                 println("[$p] loaded")
             catch e
-                println("failed to import $p deffering")
+                !(p in deffered) && println("failed to import $p deffering")
             end
         end
     end
+    deepcopy(packages)
 end
 
 function brute_import_packages!(packages,mod,n = 10)
+    deffered = Set{Symbol}()
     for i=1:n
-        Fezzik.import_packages!(packages,mod)
+        deffered = Fezzik.import_packages!(packages,mod,deffered)
     end
     for p in packages
         try
             Pkg.add("$p")
             Core.eval(mod, :(import $p))
             delete!(packages,p)
-            Fezzik.import_packages!(packages,mod)
+            for i=1:3
+                deffered = Fezzik.import_packages!(packages,mod,deffered)
+            end
         catch e
             @warn e
             @warn "could not import $p"
