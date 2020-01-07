@@ -21,6 +21,8 @@ function import_packages!(packages,mod,deffered = Set{Symbol}())
             !(p in deffered) && println("trying to import $p")
             try
                 Core.eval(mod, :(import $p))
+                newmod = Core.eval(mod,p);
+                isdefined(newmod,:__init__) && Core.eval(newmod,:__init__)()
                 Fezzik.reveal_loaded_packages(mod)
                 delete!(packages,p)
                 println("[$p] loaded")
