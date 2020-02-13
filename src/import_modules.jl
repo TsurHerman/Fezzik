@@ -34,13 +34,14 @@ function import_packages!(packages,mod,deffered = Set{Symbol}())
     deepcopy(packages)
 end
 
-function brute_import_packages!(packages,mod,n = 10)
+function brute_import_packages!(packages,mod,n = 5)
     deffered = Set{Symbol}()
     for i=1:n
         deffered = Fezzik.import_packages!(packages,mod,deffered)
     end
     for p in packages
         try
+            occursin("_jll","$p") && continue
             Pkg.add("$p")
             Core.eval(mod, :(import $p))
             delete!(packages,p)
