@@ -69,7 +69,7 @@ try_parse_line(line,linenum = 0,filename ="") = begin
     end
 end
 
-function brute_build_julia(;clear_traces = true , debug = false)
+function brute_build_julia(;clear_traces = true)
     !isdir(trace_dir) && begin
         @info "no trace files found"
         return
@@ -111,9 +111,7 @@ function brute_build_julia(;clear_traces = true , debug = false)
 
     env = """
     import Pkg
-    empty!(Base.LOAD_PATH)
-    # Take LOAD_PATH from parent process
-    append!(Base.LOAD_PATH, ["@", "@v#.#", "@stdlib"])
+    Pkg.activate()
     import Random
     Base.PCRE.__init__()
     Random.__init__()
@@ -121,8 +119,7 @@ function brute_build_julia(;clear_traces = true , debug = false)
     """
 
     usings = """
-    import Pkg
-    Pkg.activate()
+
     import Fezzik
     packages = $(repr(packages))
     Fezzik.brute_import_packages!(packages,@__MODULE__)
@@ -144,26 +141,14 @@ function brute_build_julia(;clear_traces = true , debug = false)
         # recursively bring dependencies of used packages and standard libraries into namespace
         $usings
 
+        Fezzik.reset_count()
         """)
+
         for line in statements
-
-            reporter = debug ? """ println("\$(@__FILE__):\$LINE") """ : """ print("compiling line \$LINE\\r") """
-
-            println(io, """
-            let LINE = @__LINE__;
-            try $line;
-                $reporter;
-            catch e; println(); @info repr(e) LINE end end
-            """)
+            println(io, "Fezzik.@compile $line ")
         end
 
-        println(io, """
-            println();
-            println("done.")
-            println(".")
-            println(".")
-            println("Creating sysimg")
-        """)
+        println(io, "Fezzik.compile_summary()")
 
     end
     @info "used $(length(statements)) precompile statements"
@@ -172,33 +157,88 @@ function brute_build_julia(;clear_traces = true , debug = false)
     untrace()
 
     println("\n\n\n Compiling...")
-    (new_syso, old_syso) = PackageCompiler.compile_incremental(nothing,out_file;force = false , verbose = false)
+    compile_incremental(out_file)
     @info "DONE!!"
-    try
-        cp(new_syso, old_syso, force = true)
-    catch err
-        @warn "Failed to replace sysimg" err
-        println()
-        println("exit all julia sessions and manually run the following command: ")
-        copy_com = Sys.iswindows() ? "copy" : "cp"
-        println("$copy_com $new_syso $old_syso")
-        println()
-    end
     exit()
     nothing
 end
 export brute_build_julia
 
 import Libdl
-sysimage_size() = stat(joinpath(PackageCompiler.default_sysimg_path(),"sys.$(Libdl.dlext)")).size/(1024*1024)
+sysimage_size() = stat(PackageCompiler.default_sysimg_path()).size/(1024*1024)
 export sysimage_size
 
 revert(;force = false) = begin
-    force && rm(PackageCompiler.sysimgbackup_folder(); force = true, recursive = true)
-    PackageCompiler.revert(false)
+    PackageCompiler.restore_default_sysimage()
 end
 
-clean() = begin
-    rm(PackageCompiler.sysimgbackup_folder();force = true,recursive = true);
-    PackageCompiler.force_native_image!();
+
+compile_incremental(file) = begin
+    PackageCompiler.create_sysimage(precompile_execution_file = file , replace_default = true)
+end
+
+function PackageCompiler.create_sysimg_object_file(object_file::String, packages::Vector{String};
+                            project::String,
+                            base_sysimage::String,
+                            precompile_execution_file::Vector{String},
+                            precompile_statements_file::Vector{String},
+                            cpu_target::String,
+                            script::Nothing,
+                            isapp::Bool)
+
+
+    @debug "creating object file at $object_file"
+    @info "PackageCompiler: creating system image object file, this might take a while..."
+    code = PrecompileCommand(precompile_execution_file[1])
+    cmd = `$(PackageCompiler.get_julia_cmd()) --cpu-target=$cpu_target
+                              --sysimage=$base_sysimage --output-o=$(object_file) -e $code`
+    @debug "running $cmd"
+    run(cmd)
+end
+
+
+#old packagecompiler
+
+
+"""
+Init basic C libraries
+"""
+function InitBase()
+    """
+    Base.__init__()
+    Sys.__init__() #fix https://github.com/JuliaLang/julia/issues/30479
+    @eval Sys BINDIR = ccall(:jl_get_julia_bindir, Any, ())::String
+
+    Base.init_load_path()
+    Base.init_depot_path()
+    """
+end
+
+"""
+# Initialize REPL module for Docs
+"""
+function InitREPL()
+    """
+    using REPL
+    Base.REPL_MODULE_REF[] = REPL
+    """
+end
+function Include(path)
+    """
+    Mod = Module()
+    Base.include(Mod,$(repr(path)))
+
+    empty!(LOAD_PATH)
+    empty!(DEPOT_PATH)
+    """
+end
+
+
+"""
+The command to pass to julia --output-o, that runs the julia code in `path` during compilation.
+"""
+function PrecompileCommand(path)
+        InitBase() *
+        InitREPL() *
+        Include(path)
 end
