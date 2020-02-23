@@ -8,3 +8,6 @@ Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
+
+[compat]
+PackageCompiler = "0.6"
