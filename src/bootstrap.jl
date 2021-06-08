@@ -69,10 +69,13 @@ try_parse_line(line,linenum = 0,filename ="") = begin
     end
 end
 
-function brute_build_julia(;clear_traces = true)
+function brute_build_julia(;clear_traces = true, replace = true)
     !isdir(trace_dir) && begin
         @info "no trace files found"
         return
+    end
+    if Sys.isunix()
+        ENV["JULIA_CC"] = "/usr/bin/gcc"
     end
     blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#","###compiledcall")
     statements = Set{String}()
@@ -157,7 +160,7 @@ function brute_build_julia(;clear_traces = true)
     untrace()
 
     println("\n\n\n Compiling...")
-    compile_incremental(out_file)
+    compile_incremental(out_file,replace)
     @info "DONE!!"
     exit()
     nothing
@@ -165,7 +168,7 @@ end
 export brute_build_julia
 
 import Libdl
-sysimage_size() = stat(PackageCompiler.default_sysimg_path()).size/(1024*1024)
+sysimage_size() = stat(unsafe_string(Base.JLOptions().image_file)).size/1024/1024
 export sysimage_size
 
 revert(;force = false) = begin
@@ -173,8 +176,13 @@ revert(;force = false) = begin
 end
 
 
-compile_incremental(file) = begin
-    PackageCompiler.create_sysimage(precompile_execution_file = file , replace_default = true)
+compile_incremental(file,replace) = begin
+    if replace
+        PackageCompiler.create_sysimage(precompile_execution_file = file , replace_default = true)
+    else
+        PackageCompiler.create_sysimage(precompile_execution_file = file , replace_default = false, sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext)
+    end
+        
 end
 
 function PackageCompiler.create_sysimg_object_file(object_file::String, packages::Vector{String};
