@@ -1,7 +1,7 @@
 name = "Fezzik"
 uuid = "5c3170aa-382f-11e9-07a5-b732e1ee027c"
 authors = ["Tsur Herman <tsur@augmedics.com>"]
-version = "0.5.0"
+version = "0.5.1"
 
 [deps]
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
