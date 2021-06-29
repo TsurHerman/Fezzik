@@ -69,6 +69,9 @@ try_parse_line(line,linenum = 0,filename ="") = begin
     end
 end
 
+brute_build_local() = brute_build_julia(replace = false)
+export brute_build_local
+
 function brute_build_julia(;clear_traces = true, replace = true)
     !isdir(trace_dir) && begin
         @info "no trace files found"
@@ -113,8 +116,10 @@ function brute_build_julia(;clear_traces = true, replace = true)
     my_env = Base.ACTIVE_PROJECT.x
 
     env = """
-    import Pkg
-    Pkg.activate()
+    try using PyCall
+        PyCall.__init__()
+    catch err
+    end
     import Random
     Base.PCRE.__init__()
     Random.__init__()
@@ -131,7 +136,7 @@ function brute_build_julia(;clear_traces = true, replace = true)
     #dry run
     temp_mod = Module()
     include_string(temp_mod,usings)
-    if my_env == nothing
+    if isnothing(my_env)
         Pkg.activate()
     else
         Pkg.activate(my_env)
@@ -178,75 +183,9 @@ end
 
 compile_incremental(file,replace) = begin
     if replace
-        PackageCompiler.create_sysimage(precompile_execution_file = file , replace_default = true)
+        PackageCompiler.create_sysimage(precompile_statements_file = file , replace_default = true)
     else
-        PackageCompiler.create_sysimage(precompile_execution_file = file , replace_default = false, sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext)
-    end
-        
-end
-
-function PackageCompiler.create_sysimg_object_file(object_file::String, packages::Vector{String};
-                            project::String,
-                            base_sysimage::String,
-                            precompile_execution_file::Vector{String},
-                            precompile_statements_file::Vector{String},
-                            cpu_target::String,
-                            script::Nothing,
-                            isapp::Bool)
-
-
-    @debug "creating object file at $object_file"
-    @info "PackageCompiler: creating system image object file, this might take a while..."
-    code = PrecompileCommand(precompile_execution_file[1])
-    cmd = `$(PackageCompiler.get_julia_cmd()) --cpu-target=$cpu_target
-                              --sysimage=$base_sysimage --output-o=$(object_file) -e $code`
-    @debug "running $cmd"
-    run(cmd)
-end
-
-
-#old packagecompiler
-
-
-"""
-Init basic C libraries
-"""
-function InitBase()
-    """
-    Base.__init__()
-    Sys.__init__() #fix https://github.com/JuliaLang/julia/issues/30479
-    @eval Sys BINDIR = ccall(:jl_get_julia_bindir, Any, ())::String
-
-    Base.init_load_path()
-    Base.init_depot_path()
-    """
-end
-
-"""
-# Initialize REPL module for Docs
-"""
-function InitREPL()
-    """
-    using REPL
-    Base.REPL_MODULE_REF[] = REPL
-    """
-end
-function Include(path)
-    """
-    Mod = Module()
-    Base.include(Mod,$(repr(path)))
-
-    empty!(LOAD_PATH)
-    empty!(DEPOT_PATH)
-    """
-end
-
-
-"""
-The command to pass to julia --output-o, that runs the julia code in `path` during compilation.
-"""
-function PrecompileCommand(path)
-        InitBase() *
-        InitREPL() *
-        Include(path)
+        base_sysimg = Base.JLOptions().image_file |> unsafe_string
+        PackageCompiler.create_sysimage(precompile_statements_file = file ,base_sysimage = base_sysimg, replace_default = false, sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext)
+    end     
 end
