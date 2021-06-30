@@ -1,4 +1,9 @@
-const blacklist_file = abspath(@__DIR__,"../blacklist") 
+const blacklist_file = begin 
+    config_dir = abspath(homedir(), ".julia", "config")
+    !isdir(config_dir) && mkpath(config_dir)
+    res = abspath(config_dir,"Fezzik.blacklist")
+    res
+end
 
 function read_blacklist()
     list = Set{String}()
