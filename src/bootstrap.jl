@@ -80,7 +80,7 @@ function brute_build_julia(;clear_traces = true, replace = true)
     if Sys.isunix()
         ENV["JULIA_CC"] = "/usr/bin/gcc"
     end
-    blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#","###compiledcall")
+    blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#","###compiledcall","VSCode")
     statements = Set{String}()
     packages = Set{Symbol}()
     for fname in readdir(trace_dir)
@@ -90,7 +90,7 @@ function brute_build_julia(;clear_traces = true, replace = true)
             try
                 counter += 1
                 any(occursin.(blacklist,[line])) && continue
-                line = semantic_fix(line);
+                # line = semantic_fix(line);
                 expr = try_parse_line(line,counter,fname);
                 isnothing(expr) && continue
                 grep_possible_packages!(packages,expr)
@@ -102,6 +102,19 @@ function brute_build_julia(;clear_traces = true, replace = true)
         end
     end
 
+    out_file = abspath(@__DIR__,"../","precomp.jl")
+    @info "generating precompile"
+    
+    open(out_file, "w") do io
+        for line in statements
+            println(io, "$line ")
+        end
+    end
+    @info "used $(length(statements)) precompile statements"
+    @show out_file
+    compile_incremental(packages,out_file,replace)
+    @info "DONE!!"
+
     clear_traces && isdir(trace_dir) && for f in readdir(trace_dir)
         file = joinpath(trace_dir,f)
         try
@@ -111,62 +124,6 @@ function brute_build_julia(;clear_traces = true, replace = true)
         end
     end
 
-    out_file = abspath(@__DIR__,"../","precomp.jl")
-    @info "generating precompile"
-    my_env = Base.ACTIVE_PROJECT.x
-
-    env = """
-    try using PyCall
-        PyCall.__init__()
-    catch err
-    end
-    import Random
-    Base.PCRE.__init__()
-    Random.__init__()
-
-    """
-
-    usings = """
-
-    import Fezzik
-    packages = $(repr(packages))
-    Fezzik.brute_import_packages!(packages,@__MODULE__)
-
-    """
-    #dry run
-    temp_mod = Module()
-    include_string(temp_mod,usings)
-    if isnothing(my_env)
-        Pkg.activate()
-    else
-        Pkg.activate(my_env)
-    end
-
-    open(out_file, "w") do io
-        println(io, """
-        $env
-
-        # recursively bring dependencies of used packages and standard libraries into namespace
-        $usings
-
-        Fezzik.reset_count()
-        """)
-
-        for line in statements
-            println(io, "Fezzik.@compile $line ")
-        end
-
-        println(io, "Fezzik.compile_summary()")
-
-    end
-    @info "used $(length(statements)) precompile statements"
-    @show out_file
-
-    untrace()
-
-    println("\n\n\n Compiling...")
-    compile_incremental(out_file,replace)
-    @info "DONE!!"
     exit()
     nothing
 end
@@ -181,11 +138,40 @@ revert(;force = false) = begin
 end
 
 
-compile_incremental(file,replace) = begin
+compile_incremental(packages,file,replace) = begin
+    packages = filter(collect(packages)) do mod
+        mod == :Base ? false : mod == :Core ? false : true
+    end
+
+    missing_packages = packages_not_in_project(project_ctx(),packages)
+    try Pkg.add(missing_packages) catch err
+        unresolved = map(x->String(x[1]),eachmatch(r"[*] (\w+)",err.msg))
+        @show unresolved
+        packages = setdiff(packages,Symbol.(unresolved))
+        missing_packages = setdiff(missing_packages,unresolved)
+        !isempty(missing_packages)  && Pkg.add(missing_packages)
+    end
+
     if replace
-        PackageCompiler.create_sysimage(precompile_statements_file = file , replace_default = true)
+        PackageCompiler.create_sysimage(packages; precompile_statements_file = file , replace_default = true)
     else
-        base_sysimg = Base.JLOptions().image_file |> unsafe_string
-        PackageCompiler.create_sysimage(precompile_statements_file = file ,base_sysimage = base_sysimg, replace_default = false, sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext)
+        PackageCompiler.create_sysimage(packages; precompile_statements_file = file , sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext )
     end     
+end
+
+function packages_not_in_project(ctx, packages)
+    packages_in_project = collect(keys(ctx.env.project.deps))
+    if ctx.env.pkg !== nothing
+        push!(packages_in_project, ctx.env.pkg.name)
+    end
+    setdiff(string.(packages), packages_in_project)
+end
+
+function project_ctx(project = dirname(Base.active_project()))
+    @show project
+    project_toml_path = Pkg.Types.projectfile_path(project; strict=true)
+    if project_toml_path === nothing
+        error("could not find project at $(repr(project))")
+    end
+    return Pkg.Types.Context(env=Pkg.Types.EnvCache(project_toml_path))
 end
