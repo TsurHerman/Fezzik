@@ -152,10 +152,12 @@ compile_incremental(packages,file,replace) = begin
         !isempty(missing_packages)  && Pkg.add(missing_packages)
     end
 
+    @show Base.JLOptions().image_file |> unsafe_string |> deepcopy
     if replace
         PackageCompiler.create_sysimage(packages; precompile_statements_file = file , replace_default = true)
     else
-        PackageCompiler.create_sysimage(packages; precompile_statements_file = file , sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext )
+        PackageCompiler.create_sysimage(packages; precompile_statements_file = file , sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext,
+        base_sysimage = Base.JLOptions().image_file |> unsafe_string |> deepcopy)
     end     
 end
 
