@@ -1,6 +1,7 @@
 using PackageCompiler
 using Setfield
 using Pkg
+using Random
 
 const trace_dir = abspath(@__DIR__,"../traces/")
 const trace_file = Vector{UInt8}()
@@ -104,10 +105,30 @@ function brute_build_julia(;clear_traces = true, replace = true)
 
     out_file = abspath(@__DIR__,"../","precomp.jl")
     @info "generating precompile"
-    
+
+    for pkg in packages
+        @eval import $pkg
+    end
+    @info "dry run3"
+    statements = filter(shuffle(collect(statements))) do st
+        try 
+            res = eval(Meta.parse(st))
+            if !res
+                @warn st
+            end
+            return res
+        catch err
+            @show err
+            return false
+        end
+    end
+
     open(out_file, "w") do io
+        for pkg in packages
+            println(io, "import $(pkg)")
+        end
         for line in statements
-            println(io, "$line ")
+            println(io, "$line")
         end
     end
     @info "used $(length(statements)) precompile statements"
@@ -156,8 +177,8 @@ compile_incremental(packages,file,replace) = begin
     if replace
         PackageCompiler.create_sysimage(packages; precompile_statements_file = file , replace_default = true)
     else
-        PackageCompiler.create_sysimage(packages; precompile_statements_file = file , sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext,
-        base_sysimage = Base.JLOptions().image_file |> unsafe_string |> deepcopy)
+        PackageCompiler.create_sysimage(packages; precompile_execution_file = file , sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext,
+        base_sysimage = Base.JLOptions().image_file |> unsafe_string |> deepcopy , include_transitive_dependencies = false, sysimage_build_args = `-O2 --check-bounds=no`)
     end     
 end
 
