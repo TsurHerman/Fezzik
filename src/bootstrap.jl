@@ -1,10 +1,23 @@
 using PackageCompiler
-using Setfield
 using Pkg
 using Random
 
 const trace_dir = abspath(@__DIR__,"../traces/")
 const trace_file = Vector{UInt8}()
+const precompile_file = abspath(@__DIR__,"../","precomp.jl")
+
+setfields(x;kwargs...) = begin
+    fields = fieldnames(typeof(x))
+    vals = getfield.([x],fields)
+    for (i,kw) in enumerate(kwargs)
+        field_index = findfirst(fieldnames(typeof(x)) .== Symbol(kw[1]))
+        if !isnothing(field_index)
+            vals[field_index] = kw[2]
+        end
+    end
+    typeof(x)(vals...)
+end
+
 
 function trace()
     global trace_dir,trace_file
@@ -17,8 +30,7 @@ function trace()
     push!(trace_file,C_NULL)
 
     opts = Base.JLOptions()
-    opts = @set opts.trace_compile = pointer(trace_file)
-    opts = @set opts.compile_enabled = 2
+    opts = setfields(opts; trace_compile = pointer(trace_file))
     unsafe_store!(Base.cglobal(:jl_options,Base.JLOptions),opts)
     return nothing
 end
@@ -26,8 +38,7 @@ end
 function untrace()
     global trace_dir,cstr
     opts = Base.JLOptions()
-    opts = @set opts.trace_compile = C_NULL
-    opts = @set opts.compile_enabled = 1
+    opts = setfields(opt; trace_compile = C_NULL)
     unsafe_store!(Base.cglobal(:jl_options,Base.JLOptions),opts)
     return nothing
 end
@@ -81,7 +92,7 @@ function brute_build_julia(;clear_traces = true, replace = true)
     if Sys.isunix()
         ENV["JULIA_CC"] = "/usr/bin/gcc"
     end
-    blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#","###compiledcall","VSCode")
+    blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#","###compiledcall", "VSCodeServer","ExprTools","TOML")
     statements = Set{String}()
     packages = Set{Symbol}()
     for fname in readdir(trace_dir)
@@ -103,16 +114,24 @@ function brute_build_julia(;clear_traces = true, replace = true)
         end
     end
 
-    out_file = abspath(@__DIR__,"../","precomp.jl")
     @info "generating precompile"
 
+    @info "dry run"
+
+    Pkg.activate()
     for pkg in packages
-        @eval import $pkg
+        @eval Main begin
+            try 
+                import $pkg
+            catch err
+                @show err
+            end
+        end
     end
-    @info "dry run3"
+    
     statements = filter(shuffle(collect(statements))) do st
         try 
-            res = eval(Meta.parse(st))
+            res = Main.eval(Meta.parse(st))
             if !res
                 @warn st
             end
@@ -123,17 +142,18 @@ function brute_build_julia(;clear_traces = true, replace = true)
         end
     end
 
-    open(out_file, "w") do io
-        for pkg in packages
-            println(io, "import $(pkg)")
-        end
+    open(precompile_file, "w") do io
+        println(io,"import Pkg;Pkg.activate()")
+        # for pkg in packages
+        #     println(io, "import $(pkg)")
+        # end
         for line in statements
             println(io, "$line")
         end
     end
     @info "used $(length(statements)) precompile statements"
-    @show out_file
-    compile_incremental(packages,out_file,replace)
+    @show precompile_file
+    compile_incremental(packages,replace)
     @info "DONE!!"
 
     clear_traces && isdir(trace_dir) && for f in readdir(trace_dir)
@@ -154,12 +174,8 @@ import Libdl
 sysimage_size() = stat(unsafe_string(Base.JLOptions().image_file)).size/1024/1024
 export sysimage_size
 
-revert(;force = false) = begin
-    PackageCompiler.restore_default_sysimage()
-end
-
-
-compile_incremental(packages,file,replace) = begin
+compile_incremental(packages,replace) = begin
+    Pkg.activate()
     packages = filter(collect(packages)) do mod
         mod == :Base ? false : mod == :Core ? false : true
     end
@@ -173,12 +189,15 @@ compile_incremental(packages,file,replace) = begin
         !isempty(missing_packages)  && Pkg.add(missing_packages)
     end
 
-    @show Base.JLOptions().image_file |> unsafe_string |> deepcopy
+    base_sysimage =  Base.JLOptions().image_file |> unsafe_string |> deepcopy
+    @show missing_packages
+    @show base_sysimage
+    @show packages
     if replace
-        PackageCompiler.create_sysimage(packages; precompile_statements_file = file , replace_default = true)
+        PackageCompiler.create_sysimage(packages; precompile_statements_file = precompile_file ,sysimage_path = (@__DIR__) * "/temp_sysimg" ,  incremental = true)
+        mv((@__DIR__) * "/temp_sysimg" ,base_sysimage;force =true)
     else
-        PackageCompiler.create_sysimage(packages; precompile_execution_file = file , sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext,
-        base_sysimage = Base.JLOptions().image_file |> unsafe_string |> deepcopy , include_transitive_dependencies = false, sysimage_build_args = `-O2 --check-bounds=no`)
+        PackageCompiler.create_sysimage(packages; precompile_statements_file = precompile_file , sysimage_path = pwd() * "/JuliaSysimage." * PackageCompiler.Libdl.dlext , incremental = true)
     end     
 end
 

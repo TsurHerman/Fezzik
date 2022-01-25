@@ -1,12 +1,10 @@
 name = "Fezzik"
 uuid = "5c3170aa-382f-11e9-07a5-b732e1ee027c"
 authors = ["Tsur Herman <tsur@augmedics.com>"]
-version = "0.5.4"
+version = "0.6.0"
 
 [deps]
-ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 PackageCompiler = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
