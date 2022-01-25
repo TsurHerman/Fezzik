@@ -92,7 +92,7 @@ function brute_build_julia(;clear_traces = true, replace = true)
     if Sys.isunix()
         ENV["JULIA_CC"] = "/usr/bin/gcc"
     end
-    blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#","###compiledcall", "VSCodeServer","ExprTools","TOML")
+    blacklist = push!(Fezzik.blacklist(),"Main","##benchmark#","###compiledcall", "VSCodeServer")
     statements = Set{String}()
     packages = Set{Symbol}()
     for fname in readdir(trace_dir)
@@ -125,6 +125,7 @@ function brute_build_julia(;clear_traces = true, replace = true)
                 import $pkg
             catch err
                 @show err
+                try Pkg.add($pkg) catch err @show err;end
             end
         end
     end
