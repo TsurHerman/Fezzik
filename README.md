@@ -20,6 +20,8 @@ After this phase you'll need to re-launch julia , work a little bit to let Fezzi
 
 ```julia
 Fezzik.brute_build_julia()
+# or 
+Fezzik.brute_build_local() #sysimg will be placed in the project folder
 ```
 builds a new julia system image with all the traced statements baked into the system image resulting in a much smoother experience with julia for the small price of slightly increased loading time, If you are working with Juno's cycler mode then this price is nicely hidden from you.  
 
