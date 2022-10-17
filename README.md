@@ -53,7 +53,7 @@ abspath(dirname(pathof(Fezzik)),"../","traces") |> edit
 ```
 
 ### PyPlot
-to enable PyPlot showing properly after it was baked into the sytem image
+to enable PyPlot showing properly after it was baked into the system image
 add
 ```julia
 PyPlot.ion()
@@ -62,7 +62,7 @@ to your startup.jl
 
 ### Revert
 
-every now and then you'll want to start over , just call
+every now and then you'll want to start over, just call
 ```julia
 Fezzik.revert()
 ```
